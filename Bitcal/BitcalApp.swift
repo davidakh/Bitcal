@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct BitcalApp: App {
+    @StateObject var historyManager = HistoryManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(historyManager)
         }
     }
 }

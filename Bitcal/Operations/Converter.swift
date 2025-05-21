@@ -7,12 +7,12 @@
 
 import SwiftUI
 
-struct Converter: View {
+struct ConverterView: View {
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        Text("Coverter")
     }
 }
 
 #Preview {
-    Converter()
+    ConverterView()
 }
