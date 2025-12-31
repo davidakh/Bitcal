@@ -14,21 +14,32 @@ struct ContentView: View {
     @State private var isHistoryViewPresent = false
     @State private var calculatorInput: String = ""
     @State private var didCopy = false
-    
+    @State private var copiedOutput: String = ""
+    @State private var isNumberSystemMenuPresent = false
+    @Binding var selectedBase: NumberBase
+
+    @AppStorage("hasSeenClearTip") var hasSeenClearTip: Bool = false
+
     var body: some View {
         NavigationStack {
             VStack {
                 navBar()
                     .padding(.top, 16)
                 if isCalculatorViewPresent {
-                    CalculatorView(currentInput: $calculatorInput)
+                    CalculatorView(currentInput: $calculatorInput, selectedBase: $selectedBase)
                         .transition(.blurReplace)
                 } else {
-                    ConverterView()
+                    ConverterView(copiedOutput: $copiedOutput)
+                        .transition(.blurReplace)
                 }
                 Spacer()
             }
             .padding(.horizontal, 16)
+            .overlay(alignment: .top) {
+                if hasSeenClearTip == false && isOperationsMenuPresent == false {
+                    clearTipOverlay()
+                }
+            }
             .overlay(alignment: .topLeading) {
                 if isOperationsMenuPresent {
                     operationsMenu()
@@ -37,9 +48,17 @@ struct ContentView: View {
                         .transition(.blurReplace)
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                if isNumberSystemMenuPresent {
+                    numberSystemMenu()
+                        .padding(.top, 60)
+                        .padding(.trailing, 12)
+                        .transition(.blurReplace)
+                }
+            }
         }
     }
-    
+
     @ViewBuilder
     private func navBar() -> some View {
         HStack {
@@ -47,19 +66,33 @@ struct ContentView: View {
                 triggerHapticFeedback()
                 withAnimation {
                     isOperationsMenuPresent.toggle()
+                    isNumberSystemMenuPresent = false
                 }
             }) {
                 operationSelector()
             }
             Spacer()
+            if isCalculatorViewPresent {
+                Button(action: {
+                    triggerHapticFeedback()
+                    withAnimation {
+                        isNumberSystemMenuPresent.toggle()
+                        isOperationsMenuPresent = false
+                    }
+                }) {
+                    numberSystemSelector()
+                }
+            }
             Button(action: {
                 triggerHapticFeedback()
-                UIPasteboard.general.string = calculatorInput
+                
+                let stringToCopy = isCalculatorViewPresent ? calculatorInput : copiedOutput
+                UIPasteboard.general.string = stringToCopy
+                
                 withAnimation(.easeInOut(duration: 0.2)) {
                     didCopy = true
                 }
-
-                // Reset after 3 seconds
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                     didCopy = false
                 }
@@ -69,29 +102,86 @@ struct ContentView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(.main)
                         .frame(width: 32, height: 32)
-                        .background(Color(.systemGray6))
+                        .glassEffect()
                         .clipShape(Circle())
+                        .transition(.blurReplace)
                 } else {
-                    copyButton() // your original copy icon
+                    copyButton()
+                        .transition(.blurReplace)
                 }
             }
-            Button(action: {
-                triggerHapticFeedback()
-                withAnimation {
-                    isOperationsMenuPresent = false
-                }
-                isHistoryViewPresent.toggle()
-            }) {
-                historyButton()
-                    .sheet(isPresented: $isHistoryViewPresent) {
-                        HistoryView()
-                            .presentationCornerRadius(32)
-                            .presentationDragIndicator(.visible)
+            .animation(.easeInOut, value: calculatorInput)
+            if isCalculatorViewPresent {
+                Button(action: {
+                    triggerHapticFeedback()
+                    withAnimation {
+                        isOperationsMenuPresent = false
                     }
+                    isHistoryViewPresent.toggle()
+                }) {
+                    historyButton()
+                        .sheet(isPresented: $isHistoryViewPresent) {
+                            HistoryView()
+                                .presentationCornerRadius(32)
+                                .presentationDragIndicator(.visible)
+                        }
+                }
             }
         }
     }
-    
+
+    @ViewBuilder
+    private func numberSystemSelector() -> some View {
+        HStack {
+            Text(selectedBase == .binary ? "01" : selectedBase == .decimal ? "123" : "2DE")
+                .foregroundStyle(.accent)
+                .font(.system(size: 16, weight: .semibold, design: .monospaced))
+            Image(systemName: isNumberSystemMenuPresent ? "chevron.up" : "chevron.down")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.gray)
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 32)
+        .glassEffect(.regular.interactive())
+    }
+
+    @ViewBuilder
+    private func numberSystemMenu() -> some View {
+        let sortedBases = NumberBase.allCases.sorted {
+            $0 == selectedBase ? true : ($1 == selectedBase ? false : true)
+        }
+
+        VStack {
+            ForEach(Array(sortedBases.enumerated()), id: \.1) { index, base in
+                Button(action: {
+                    triggerHapticFeedback()
+                    withAnimation {
+                        selectedBase = base
+                        isNumberSystemMenuPresent = false
+                    }
+                }) {
+                    HStack(alignment: .center) {
+                        Text(base == .decimal ? "123" : base == .binary ? "01" : "2DE")
+                            .font(.system(size: 18, weight: .medium, design: .monospaced))
+                            .frame(width: 48, height: 24)
+                            .foregroundStyle(base == selectedBase ? .accent : .primary)
+                        Text(base.rawValue)
+                            .font(.system(size: 16, weight: .medium, design: .monospaced))
+                            .foregroundStyle(base == selectedBase ? .accent : .primary)
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(width: 220, height: 48, alignment: .leading)
+                }
+
+                if index < sortedBases.count - 1 {
+                    Divider().frame(width: 220)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+        .glassEffect(in: RoundedRectangle(cornerRadius: 24))
+    }
+
     @ViewBuilder
     private func operationSelector() -> some View {
         HStack {
@@ -105,47 +195,82 @@ struct ContentView: View {
                     .font(.system(size: 16))
                     .frame(width: 20, height: 20)
             }
-            Text(isCalculatorViewPresent ? "Calculator" : "Coverter")
+            Text(isCalculatorViewPresent ? "Calculator" : "Converter")
                 .font(.system(size: 16, weight: .medium, design: .monospaced))
                 .foregroundStyle(.main)
                 .transition(.blurReplace)
-            if isOperationsMenuPresent {
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.gray)
-                    .transition(.blurReplace)
-            } else {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.gray)
-            }
+            Image(systemName: isOperationsMenuPresent ? "chevron.up" : "chevron.down")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.gray)
         }
         .padding(.horizontal, 12)
         .frame(height: 32)
-        .background(Color(.systemGray6))
-        .clipShape(Capsule())
+        .glassEffect(.regular.interactive())
     }
-    
+
+    @ViewBuilder
+    private func clearTipOverlay() -> some View {
+        ZStack {
+            HStack {
+                Image(systemName: "hand.tap.fill")
+                    .foregroundStyle(.accent)
+                    .font(.system(size: 32))
+                Spacer()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("How to Clear your Calculator")
+                        .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    Text("Simply tap and hold on the delete button until you feel a strong vibration. ")
+                        .font(.system(size: 14, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: .infinity)
+            }
+            .padding(16)
+            .glassEffect(in: RoundedRectangle(cornerRadius: 24))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(.top, 60)
+            .padding(.horizontal, 12)
+            .transition(.blurReplace)
+
+            HStack {
+                Spacer()
+                Button(action: {
+                    withAnimation {
+                        hasSeenClearTip.toggle()
+                    }
+                }) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.main)
+                        .frame(width: 24, height: 24)
+                        .background(Color(.systemGray5))
+                        .clipShape(Circle())
+                }
+            }
+            .padding(.horizontal, 22)
+        }
+    }
+
     @ViewBuilder
     private func copyButton() -> some View {
         Image(systemName: "document.on.document")
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(.main)
             .frame(width: 32, height: 32)
-            .background(Color(.systemGray6))
+            .glassEffect()
             .clipShape(Circle())
     }
-    
+
     @ViewBuilder
     private func historyButton() -> some View {
         Image(systemName: "clock.arrow.trianglehead.counterclockwise.rotate.90")
             .font(.system(size: 14, weight: .medium))
             .foregroundStyle(.main)
             .frame(width: 32, height: 32)
-            .background(Color(.systemGray6))
+            .glassEffect()
             .clipShape(Circle())
     }
-    
+
     @ViewBuilder
     private func operationsMenu() -> some View {
         VStack {
@@ -153,6 +278,7 @@ struct ContentView: View {
                 triggerHapticFeedback()
                 withAnimation {
                     isCalculatorViewPresent = true
+                    isOperationsMenuPresent = false
                 }
             }) {
                 HStack(alignment: .center) {
@@ -171,14 +297,13 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 16)
                 .frame(width: 220, height: 48, alignment: .leading)
-                .background(Color(.systemGray6))
             }
-            Divider()
-                .frame(width: 220)
+            Divider().frame(width: 220)
             Button(action: {
                 triggerHapticFeedback()
                 withAnimation {
                     isCalculatorViewPresent = false
+                    isOperationsMenuPresent = false
                 }
             }) {
                 MenuItem(symbol: "square.fill.on.square", text: "Converter")
@@ -186,10 +311,9 @@ struct ContentView: View {
             }
         }
         .padding(.vertical, 8)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .glassEffect(in: RoundedRectangle(cornerRadius: 24))
     }
-    
+
     func triggerHapticFeedback() {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
@@ -197,5 +321,9 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    CalculatorView(
+        currentInput: .constant("0101"),
+        selectedBase: .constant(.binary)
+    )
+    .environmentObject(HistoryManager())
 }

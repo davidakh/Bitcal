@@ -42,7 +42,6 @@ struct HistoryView: View {
                     }
                 }
             }
-            .background(Color(.systemGray6))
         }
     }
 
@@ -60,7 +59,7 @@ struct HistoryView: View {
                 historyManager.clearHistory()
             }) {
                 Image(systemName: "trash")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.red)
                     .frame(width: 32, height: 32)
                     .background(Color(.systemGray5))
@@ -72,7 +71,7 @@ struct HistoryView: View {
                 dismiss()
             }) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.main)
                     .frame(width: 32, height: 32)
                     .background(Color(.systemGray5))

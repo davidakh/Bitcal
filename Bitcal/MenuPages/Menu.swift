@@ -21,7 +21,7 @@ struct MenuItem: View {
         }
         .padding(.horizontal, 16)
         .frame(width: 220, height: 48, alignment: .leading)
-        .background(Color(.systemGray6))
+        .background(.clear)
     }
 }
 

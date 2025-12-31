@@ -57,4 +57,69 @@ struct Logic {
         let cleaned = result.drop(while: { $0 == "0" })
         return cleaned.isEmpty ? "0" : String(cleaned)
     }
+    
+    static func multiply(_ a: String, _ b: String) -> String {
+        guard let aInt = Int(a, radix: 2), let bInt = Int(b, radix: 2) else {
+            return "0"
+        }
+        let product = aInt * bInt
+        return String(product, radix: 2)
+    }
+
+    static func divide(_ a: String, _ b: String) -> String {
+        guard let aInt = Int(a, radix: 2),
+              let bInt = Int(b, radix: 2),
+              bInt != 0 else {
+            return "Error" // Division by zero or invalid input
+        }
+        let quotient = aInt / bInt
+        return String(quotient, radix: 2)
+    }
+    
+    static func convert(_ input: String, fromBase: Int, toBase: Int) -> String {
+        guard let intValue = Int(input, radix: fromBase) else {
+            return "0"
+        }
+        return String(intValue, radix: toBase).uppercased()
+    }
+    
+    static func binaryToDecimal(_ binary: String) -> String {
+        return convert(binary, fromBase: 2, toBase: 10)
+    }
+
+    static func binaryToHex(_ binary: String) -> String {
+        return convert(binary, fromBase: 2, toBase: 16)
+    }
+
+    static func decimalToBinary(_ decimal: String) -> String {
+        return convert(decimal, fromBase: 10, toBase: 2)
+    }
+
+    static func decimalToHex(_ decimal: String) -> String {
+        return convert(decimal, fromBase: 10, toBase: 16)
+    }
+
+    static func hexToBinary(_ hex: String) -> String {
+        return convert(hex, fromBase: 16, toBase: 2)
+    }
+
+    static func hexToDecimal(_ hex: String) -> String {
+        return convert(hex, fromBase: 16, toBase: 10)
+    }
+}
+
+enum NumberBase: String, CaseIterable, Identifiable {
+    case binary = "Binary"
+    case decimal = "Decimal"
+    case hexadecimal = "Hex"
+
+    var id: String { self.rawValue }
+
+    var radix: Int {
+        switch self {
+        case .binary: return 2
+        case .decimal: return 10
+        case .hexadecimal: return 16
+        }
+    }
 }
